@@ -1,0 +1,5 @@
+/* Global reset — all styling is handled inline via styles.js */
+body {
+  margin: 0;
+  background: #0a0f1a;
+}
