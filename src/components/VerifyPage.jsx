@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import { COLORS, S, Icons, font } from "../styles";
 import { isContractDeployed } from "../contract";
 import { verifyOwnership, markTicketAsUsed, handleBlockchainError } from "../blockchain";
@@ -10,6 +11,85 @@ export default function VerifyPage({ showToast }) {
   const [verifying, setVerifying] = useState(false);
   const [result, setResult] = useState(null);
   const deployed = isContractDeployed();
+
+  // QR Scanner state
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState(null);
+  const html5QrRef = useRef(null);
+  const [autoVerify, setAutoVerify] = useState(false);
+
+  // Auto-trigger verify after QR scan fills in the fields
+  useEffect(() => {
+    if (autoVerify && tokenId && walletAddr) {
+      setAutoVerify(false);
+      handleVerify();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoVerify, tokenId, walletAddr]);
+
+  // Cleanup scanner on unmount
+  useEffect(() => {
+    return () => {
+      if (html5QrRef.current) {
+        html5QrRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
+
+  const startScanner = async () => {
+    setScanError(null);
+    setScanning(true);
+    const html5Qr = new Html5Qrcode("qr-reader-container");
+    html5QrRef.current = html5Qr;
+    try {
+      await html5Qr.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 240, height: 240 } },
+        (decodedText) => {
+          handleQrSuccess(decodedText);
+        },
+        undefined
+      );
+    } catch {
+      try { html5Qr.clear(); } catch {}
+      html5QrRef.current = null;
+      setScanError("Camera access denied or unavailable. Use manual entry below.");
+      setScanning(false);
+    }
+  };
+
+  const stopScanner = async () => {
+    if (html5QrRef.current) {
+      try {
+        await html5QrRef.current.stop();
+        html5QrRef.current.clear();
+      } catch {}
+      html5QrRef.current = null;
+    }
+    setScanning(false);
+  };
+
+  const handleQrSuccess = async (text) => {
+    await stopScanner();
+    try {
+      const data = JSON.parse(text);
+      const { tokenId: scannedToken, wallet: scannedWallet, timestamp } = data;
+      if (timestamp && Date.now() - Number(timestamp) > 30000) {
+        setScanError("QR expired — please generate a new one at the ticket purchase screen.");
+        return;
+      }
+      if (scannedToken !== undefined && scannedWallet) {
+        setScanError(null);
+        setTokenId(String(scannedToken));
+        setWalletAddr(scannedWallet);
+        setAutoVerify(true);
+      } else {
+        setScanError("Invalid QR code format.");
+      }
+    } catch {
+      setScanError("Could not parse QR code — not a WickitPK ticket.");
+    }
+  };
 
   const handleVerify = async () => {
     if (!tokenId || !walletAddr) return;
@@ -52,7 +132,54 @@ export default function VerifyPage({ showToast }) {
         <h1 style={{ ...S.sectionTitle, fontSize: 32 }}>Gate Verification</h1>
         <p style={{ color: COLORS.gray, fontSize: 15 }}>Verify ticket ownership at stadium entry</p>
       </div>
+
+      {/* QR Scanner Section */}
+      <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 28, marginBottom: 16 }}>
+        <div style={{ fontFamily: font, fontSize: 13, fontWeight: 700, color: COLORS.greenLight, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>
+          Scan Ticket QR
+        </div>
+
+        {!scanning ? (
+          <button
+            onClick={startScanner}
+            style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: `1px solid ${COLORS.greenLight}40`, background: `${COLORS.greenLight}10`, color: COLORS.greenLight, fontFamily: font, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+          >
+            <span style={{ fontSize: 18 }}>&#x1F4F7;</span>
+            Open Camera &amp; Scan Ticket
+          </button>
+        ) : (
+          <div>
+            <div
+              id="qr-reader-container"
+              style={{ width: "100%", borderRadius: 12, overflow: "hidden", border: `1px solid ${COLORS.greenLight}30` }}
+            />
+            <button
+              onClick={stopScanner}
+              style={{ width: "100%", marginTop: 12, padding: "10px 16px", borderRadius: 10, border: `1px solid ${COLORS.border}`, background: "none", color: COLORS.gray, fontFamily: font, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              Cancel Scan
+            </button>
+          </div>
+        )}
+
+        {scanError && (
+          <div style={{ marginTop: 12, padding: "12px 16px", borderRadius: 10, background: `${COLORS.red}08`, border: `1px solid ${COLORS.red}30`, fontFamily: font, fontSize: 13, color: COLORS.red }}>
+            {scanError}
+          </div>
+        )}
+
+        {!scanning && !scanError && (
+          <p style={{ marginTop: 12, fontFamily: font, fontSize: 12, color: COLORS.grayDark, textAlign: "center" }}>
+            Points camera at the fan&apos;s QR code after purchase
+          </p>
+        )}
+      </div>
+
+      {/* Manual Input Form */}
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 28 }}>
+        <div style={{ fontFamily: font, fontSize: 13, fontWeight: 700, color: COLORS.gray, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>
+          Manual Entry (Fallback)
+        </div>
         <label style={{ fontFamily: font, fontSize: 13, fontWeight: 600, color: COLORS.gray, display: "block", marginBottom: 8, letterSpacing: "0.04em" }}>TOKEN ID</label>
         <input type="text" value={tokenId} onChange={e => setTokenId(e.target.value)} placeholder="Enter ticket token ID" style={{ ...S.verifyInput, marginBottom: 20 }} />
         <label style={{ fontFamily: font, fontSize: 13, fontWeight: 600, color: COLORS.gray, display: "block", marginBottom: 8, letterSpacing: "0.04em" }}>WALLET ADDRESS</label>
@@ -65,6 +192,7 @@ export default function VerifyPage({ showToast }) {
             </span>
           ) : "Verify Ticket"}
         </button>
+
         {result !== null && (
           <div style={S.verifyResult(result === true || result === "used")}>
             {result === true || result === "used" ? Icons.check : Icons.x}
@@ -85,14 +213,29 @@ export default function VerifyPage({ showToast }) {
           </div>
         )}
       </div>
+
       <div style={{ marginTop: 24, padding: 16, borderRadius: 12, background: `${COLORS.gold}05`, border: `1px solid ${COLORS.gold}15`, textAlign: "center" }}>
         <p style={{ fontSize: 12, color: COLORS.grayDark }}>This page is for stadium gate operators. No wallet connection required.</p>
       </div>
+
       <div style={{ marginTop: 12, padding: "16px 20px", borderRadius: 12, background: `${COLORS.greenLight}05`, border: `1px solid ${COLORS.greenLight}15`, textAlign: "left", display: "flex", gap: 12, alignItems: "flex-start" }}>
         <div style={{ minWidth: 20, marginTop: 1, color: COLORS.greenLight, opacity: 0.7 }}>{Icons.shield}</div>
         <p style={{ fontSize: 12, color: COLORS.gray, lineHeight: 1.6 }}>
           <span style={{ fontWeight: 700, color: COLORS.greenLight }}>Production flow:</span> Fan shows QR &rarr; Scanner reads wallet &rarr; WireFluid verifies instantly. This demo uses manual Token ID entry to simulate the same verification logic.
         </p>
+      </div>
+
+      {/* WireFluid IBC section */}
+      <div style={{ marginTop: 16, padding: "20px 24px", borderRadius: 12, background: COLORS.bgCard, border: `1px solid ${COLORS.greenLight}30`, textAlign: "left", display: "flex", gap: 14, alignItems: "flex-start" }}>
+        <div style={{ minWidth: 22, marginTop: 2, color: COLORS.greenLight }}>{Icons.shield}</div>
+        <div>
+          <div style={{ fontFamily: font, fontSize: 13, fontWeight: 700, color: COLORS.greenLight, marginBottom: 8, letterSpacing: "0.04em" }}>
+            Why WireFluid?
+          </div>
+          <p style={{ fontSize: 13, color: COLORS.gray, lineHeight: 1.7, margin: 0 }}>
+            WickitPK is deployed on WireFluid — an EVM-compatible chain built on Cosmos SDK. Unlike pure EVM chains, WireFluid supports IBC (Inter-Blockchain Communication), meaning PSL tickets minted here are natively reachable by any IBC-connected Cosmos application without bridging. Phase 2 roadmap: IBC-based cross-chain fan loyalty verification across the Cosmos ecosystem.
+          </p>
+        </div>
       </div>
     </div>
   );

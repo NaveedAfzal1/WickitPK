@@ -38,7 +38,7 @@ export default function MatchCard({ match, onBuy }) {
           return (
             <div key={tier} style={S.tierBadge(avail > 0)}>
               <div style={S.tierName}>{tier}</div>
-              <div style={S.tierPrice}>PKR {data.price.toLocaleString()}</div>
+              <div style={S.tierPrice}>{data.price} WIRE</div>
               <div style={S.tierAvail(avail > 0)}>{avail > 0 ? `${avail} left` : "Sold Out"}</div>
             </div>
           );

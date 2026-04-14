@@ -11,7 +11,7 @@ import {
 } from "./contract";
 
 // ═══════════════════════════════════════════════════════════════
-// PSL TrustTicket — Blockchain Interaction Layer (ethers.js v6)
+// WickitPK — Blockchain Interaction Layer (ethers.js v6)
 // ═══════════════════════════════════════════════════════════════
 
 // ─── ERROR HANDLER ───
@@ -117,21 +117,12 @@ export async function buyTicket(tokenId) {
   };
 }
 
-// ─── LIST FOR RESALE (2-step: approve + list) ───
+// ─── LIST FOR RESALE ───
 export async function listForResale(tokenId, priceWei) {
   if (!isContractDeployed()) throw new Error("Contract not yet deployed.");
   await ensureCorrectNetwork();
 
   const contract = await getSignerContract();
-
-  // Step 1: Check if contract is approved, if not — approve
-  const approved = await contract.getApproved(tokenId);
-  if (approved.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
-    const approveTx = await contract.approve(CONTRACT_ADDRESS, tokenId);
-    await approveTx.wait();
-  }
-
-  // Step 2: List for resale
   const tx = await contract.listForResale(tokenId, priceWei);
   const receipt = await tx.wait();
 
@@ -200,32 +191,165 @@ export async function markTicketAsUsed(tokenId) {
   };
 }
 
+// ─── MARK MATCH AS COLLECTIBLE (owner only) ───
+export async function markAsCollectible(matchId) {
+  if (!isContractDeployed()) throw new Error("Contract not yet deployed.");
+  await ensureCorrectNetwork();
+
+  const contract = await getSignerContract();
+  const tx = await contract.markAsCollectible(matchId);
+  const receipt = await tx.wait();
+
+  return {
+    txHash: receipt.hash,
+    explorerUrl: explorerTxUrl(receipt.hash),
+  };
+}
+
+// ─── GIFT TRANSFER (safeTransferFrom after buying) ───
+export async function giftTransfer(from, to, tokenId) {
+  if (!isContractDeployed()) throw new Error("Contract not yet deployed.");
+  await ensureCorrectNetwork();
+
+  const contract = await getSignerContract();
+  // Use function fragment selector for overloaded safeTransferFrom
+  const tx = await contract["safeTransferFrom(address,address,uint256)"](from, to, tokenId);
+  const receipt = await tx.wait();
+
+  return {
+    txHash: receipt.hash,
+    explorerUrl: explorerTxUrl(receipt.hash),
+  };
+}
+
+// ─── TEAM NAME LOOKUP ───
+const TEAM_NAME_MAP = {
+  LQ: "Lahore Qalandars",
+  IU: "Islamabad United",
+  KK: "Karachi Kings",
+  MS: "Multan Sultans",
+  PZ: "Peshawar Zalmi",
+  QG: "Quetta Gladiators",
+  RP: "Rawalpindi Pindiz",
+  HK: "Hyderabad Kingsmen",
+};
+
+function parseMatchName(name) {
+  // Format: "LQ vs IU - Match 1"
+  const dashIdx = name.indexOf(" - ");
+  const vsPart = dashIdx !== -1 ? name.slice(0, dashIdx) : name;
+  const matchPart = dashIdx !== -1 ? name.slice(dashIdx + 3) : "";
+  const matchNum = matchPart ? parseInt(matchPart.replace("Match ", "")) || null : null;
+  const parts = vsPart.split(" vs ");
+  const homeAbbr = (parts[0] || "").trim();
+  const awayAbbr = (parts[1] || "").trim();
+  return {
+    home: TEAM_NAME_MAP[homeAbbr] || homeAbbr,
+    away: TEAM_NAME_MAP[awayAbbr] || awayAbbr,
+    matchNum,
+  };
+}
+
+function formatMatchDate(unixTimestamp) {
+  const d = new Date(Number(unixTimestamp) * 1000);
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatMatchTime(unixTimestamp) {
+  const d = new Date(Number(unixTimestamp) * 1000);
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+}
+
 // ─── FETCH ALL MATCHES ───
+const MATCHES_CACHE_KEY = "wickitpk_matches";
+const MATCHES_CACHE_TS_KEY = "wickitpk_matches_ts";
+const MATCHES_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function clearMatchesCache() {
+  sessionStorage.removeItem(MATCHES_CACHE_KEY);
+  sessionStorage.removeItem(MATCHES_CACHE_TS_KEY);
+}
+
 export async function fetchAllMatches() {
   if (!isContractDeployed()) return [];
+
+  // Return cached data if still fresh
+  try {
+    const cached = sessionStorage.getItem(MATCHES_CACHE_KEY);
+    const cachedTs = sessionStorage.getItem(MATCHES_CACHE_TS_KEY);
+    if (cached && cachedTs && Date.now() - Number(cachedTs) < MATCHES_CACHE_TTL_MS) {
+      return JSON.parse(cached);
+    }
+  } catch {}
 
   const contract = getReadOnlyContract();
   const nextId = await contract.nextMatchId();
   const count = Number(nextId);
 
-  const matches = [];
-  const promises = [];
-  for (let i = 1; i < count; i++) {
-    promises.push(
-      contract.getMatchDetails(i).then((details) => ({
-        id: i,
-        name: details.name,
-        venue: details.venue,
-        date: Number(details.date),
-        maxResalePercentage: Number(details.maxResalePercentage),
-        active: details.active,
-        collectible: details.collectible,
-      }))
-    );
-  }
+  const matchIds = [];
+  for (let i = 1; i < count; i++) matchIds.push(i);
 
-  const results = await Promise.all(promises);
-  return results.filter((m) => m.active);
+  const matches = await Promise.all(
+    matchIds.map(async (id) => {
+      const [details, availableTokenIds] = await Promise.all([
+        contract.getMatchDetails(id),
+        contract.getAvailableTickets(id),
+      ]);
+
+      if (!details.active) return null;
+
+      const { home, away, matchNum } = parseMatchName(details.name);
+
+      // Fetch ticket info for all available tokens to build per-tier pricing
+      const availableTickets = await batchFetchTicketInfo(contract, availableTokenIds);
+
+      const tierMap = {};
+      for (const ticket of availableTickets) {
+        const tier = ticket.tier;
+        if (!tierMap[tier]) {
+          tierMap[tier] = {
+            price: ethers.formatEther(ticket.faceValue),
+            priceWei: ticket.faceValue,
+            available: 0,
+            total: 0,
+            sold: 0,
+          };
+        }
+        tierMap[tier].available++;
+        tierMap[tier].total++;
+      }
+
+      // Ensure all 3 tiers are present
+      for (const tier of ["General", "Premium", "VIP"]) {
+        if (!tierMap[tier]) {
+          tierMap[tier] = { price: "0", priceWei: BigInt(0), available: 0, total: 0, sold: 0 };
+        }
+      }
+
+      return {
+        id,
+        home,
+        away,
+        matchNum: matchNum || id,
+        date: formatMatchDate(details.date),
+        time: formatMatchTime(details.date),
+        venue: details.venue,
+        resaleCap: Number(details.maxResalePercentage),
+        collectible: details.collectible,
+        tickets: tierMap,
+      };
+    })
+  );
+
+  const result = matches.filter(Boolean);
+
+  // Cache the result
+  try {
+    sessionStorage.setItem(MATCHES_CACHE_KEY, JSON.stringify(result));
+    sessionStorage.setItem(MATCHES_CACHE_TS_KEY, String(Date.now()));
+  } catch {}
+
+  return result;
 }
 
 // ─── FETCH AVAILABLE TICKETS FOR A MATCH ───

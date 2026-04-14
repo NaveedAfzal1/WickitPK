@@ -7,7 +7,7 @@ export default function Navbar({ page, setPage, wallet, onConnect }) {
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={S.logo} onClick={() => setPage("browse")}>
             <div style={S.logoIcon}>&#x26A1;</div>
-            <span>PSL <span style={{ color: COLORS.greenLight }}>TrustTicket</span></span>
+            <span>Wickit<span style={{ color: COLORS.greenLight }}>PK</span></span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 20, background: `${COLORS.border}60`, border: `1px solid ${COLORS.border}` }}>
             <div style={{ width: 14, height: 14, borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #06b6d4)" }} />

@@ -74,6 +74,9 @@ contract PSLTrustTicket is ERC721Enumerable, Ownable, ReentrancyGuard {
     /// @notice Addresses authorized to scan tickets at stadium gates
     mapping(address => bool) public gateOperators;
 
+    /// @notice Pending seller payouts — use withdrawFunds() to claim (pull-payment pattern)
+    mapping(address => uint256) public pendingWithdrawals;
+
     // ═══════════════════════════════════════════════════════════════
     //                          EVENTS
     // ═══════════════════════════════════════════════════════════════
@@ -299,9 +302,8 @@ contract PSLTrustTicket is ERC721Enumerable, Ownable, ReentrancyGuard {
         // Transfer ticket from escrow to new buyer
         _transfer(address(this), msg.sender, _tokenId);
 
-        // Pay seller (95%)
-        (bool sentSeller, ) = seller.call{value: sellerPayout}("");
-        require(sentSeller, "Payment to seller failed");
+        // Credit seller (95%) — pull-payment prevents malicious-contract DoS
+        pendingWithdrawals[seller] += sellerPayout;
 
         // Pay royalty to organizer (5%)
         (bool sentRoyalty, ) = owner().call{value: royalty}("");
@@ -559,6 +561,20 @@ contract PSLTrustTicket is ERC721Enumerable, Ownable, ReentrancyGuard {
             "data:application/json;base64,",
             Base64.encode(json)
         ));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //                   7. SELLER WITHDRAWAL
+    // ═══════════════════════════════════════════════════════════════
+
+    /// @notice Sellers call this to collect their resale proceeds.
+    ///         Uses pull-payment pattern to prevent malicious-contract DoS.
+    function withdrawFunds() external nonReentrant {
+        uint256 amount = pendingWithdrawals[msg.sender];
+        require(amount > 0, "Nothing to withdraw");
+        pendingWithdrawals[msg.sender] = 0;
+        (bool sent, ) = msg.sender.call{value: amount}("");
+        require(sent, "Withdrawal failed");
     }
 
     /// @dev Override required by Solidity for ERC721Enumerable

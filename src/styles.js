@@ -27,6 +27,8 @@ export const TEAM_COLORS = {
   "Multan Sultans": { primary: "#fbbf24", secondary: "#2563eb" },
   "Peshawar Zalmi": { primary: "#fbbf24", secondary: "#1e3a5f" },
   "Quetta Gladiators": { primary: "#7c3aed", secondary: "#fbbf24" },
+  "Rawalpindi Pindiz": { primary: "#1e40af", secondary: "#FFD700" },
+  "Hyderabad Kingsmen": { primary: "#7c3aed", secondary: "#f59e0b" },
 };
 
 export const font = "'Sora', sans-serif";
