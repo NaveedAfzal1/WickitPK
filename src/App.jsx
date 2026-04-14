@@ -217,7 +217,7 @@ export default function App() {
   const handleListResale = async (tokenId, price) => {
     try {
       if (deployed) {
-        showToast("Approve & list \u2014 confirm in MetaMask...");
+        showToast("Step 1 of 2: Approve — confirm in MetaMask...");
         const priceWei = ethers.parseEther(String(price));
         await listForResaleOnChain(tokenId, priceWei);
         showToast("Listed for resale on-chain!");
@@ -228,6 +228,15 @@ export default function App() {
       setMyTickets(prev => prev.map(t =>
         t.tokenId === tokenId ? { ...t, status: "listed", listPrice: price, listPriceFormatted: String(price) } : t
       ));
+      // Refresh resale marketplace so the new listing appears immediately
+      if (deployed) {
+        const ticket = myTickets.find(t => t.tokenId === tokenId);
+        if (ticket) {
+          fetchResaleTickets(ticket.matchId)
+            .then(updated => setResaleListings(prev => [...prev.filter(l => l.matchId !== ticket.matchId), ...updated]))
+            .catch(() => {});
+        }
+      }
     } catch (err) {
       showToast(handleBlockchainError(err), "error");
     }
@@ -247,6 +256,15 @@ export default function App() {
       setMyTickets(prev => prev.map(t =>
         t.tokenId === tokenId ? { ...t, status: "active", listPrice: null, listPriceFormatted: null } : t
       ));
+      // Refresh resale marketplace so the cancelled listing disappears immediately
+      if (deployed) {
+        const ticket = myTickets.find(t => t.tokenId === tokenId);
+        if (ticket) {
+          fetchResaleTickets(ticket.matchId)
+            .then(updated => setResaleListings(prev => [...prev.filter(l => l.matchId !== ticket.matchId), ...updated]))
+            .catch(() => {});
+        }
+      }
     } catch (err) {
       showToast(handleBlockchainError(err), "error");
     }
@@ -274,6 +292,13 @@ export default function App() {
         listPrice: null,
         listPriceFormatted: null,
       }]);
+      // Remove bought listing optimistically, then refresh from chain
+      setResaleListings(prev => prev.filter(l => l.tokenId !== listing.tokenId));
+      if (deployed) {
+        fetchResaleTickets(listing.matchId)
+          .then(updated => setResaleListings(prev => [...prev.filter(l => l.matchId !== listing.matchId), ...updated]))
+          .catch(() => {});
+      }
     } catch (err) {
       showToast(handleBlockchainError(err), "error");
     }

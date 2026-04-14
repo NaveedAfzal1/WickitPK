@@ -93,15 +93,26 @@ export default function VerifyPage({ showToast }) {
 
   const handleVerify = async () => {
     if (!tokenId || !walletAddr) return;
+
+    const parsedToken = parseInt(tokenId);
+    if (!Number.isInteger(parsedToken) || parsedToken <= 0) {
+      showToast("Invalid token ID — must be a positive integer.", "error");
+      return;
+    }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(walletAddr.trim())) {
+      showToast("Invalid wallet address — must be a valid 0x address.", "error");
+      return;
+    }
+
     setVerifying(true);
     setResult(null);
     try {
       if (deployed) {
-        const valid = await verifyOwnership(parseInt(tokenId), walletAddr);
+        const valid = await verifyOwnership(parsedToken, walletAddr.trim());
         setResult(valid);
       } else {
         await wait(1500);
-        setResult(parseInt(tokenId) % 2 === 0);
+        setResult(parsedToken % 2 === 0);
       }
     } catch (err) {
       showToast(handleBlockchainError(err), "error");

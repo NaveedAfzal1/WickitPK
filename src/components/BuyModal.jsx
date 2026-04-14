@@ -49,7 +49,7 @@ export default function BuyModal({ match, onClose, wallet, onPurchase, onGiftPur
     setBuying(true);
     try {
       const tokenId = await onPurchase(match, selectedTier);
-      setPurchasedTokenId(tokenId || Math.floor(Math.random() * 900 + 100));
+      setPurchasedTokenId(tokenId);
       setSuccess(true);
     } catch {
       // error handled by parent

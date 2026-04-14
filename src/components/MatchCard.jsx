@@ -4,7 +4,7 @@ import { COLORS, TEAM_COLORS, S, Icons, font } from "../styles";
 export default function MatchCard({ match, onBuy, index = 0 }) {
   const [hovered, setHovered] = useState(false);
   const homeColor = TEAM_COLORS[match.home]?.primary || COLORS.greenLight;
-  const isHot = Object.values(match.tickets).some(t => t.sold / t.total > 0.8);
+  const isHot = Object.values(match.tickets).some(t => t.available > 0 && t.available <= 5);
 
   const cardStyle = {
     ...S.matchCard,

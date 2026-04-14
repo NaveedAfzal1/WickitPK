@@ -162,19 +162,25 @@ export default function MyTicketsPage({ wallet, myTickets, matches, onListResale
                 <input
                   type="number"
                   step="any"
+                  min="0"
                   value={listPrice}
                   onChange={e => setListPrice(e.target.value)}
                   placeholder={`Max ${maxResale}`}
-                  style={S.verifyInput}
+                  style={{ ...S.verifyInput, borderColor: listPrice && parseFloat(listPrice) > parseFloat(maxResale) ? `${COLORS.red}80` : undefined }}
                 />
+                {listPrice && parseFloat(listPrice) > parseFloat(maxResale) && (
+                  <p style={{ marginTop: 6, fontSize: 12, color: COLORS.red, fontFamily: font }}>
+                    Exceeds resale cap — max allowed is {maxResale} WIRE
+                  </p>
+                )}
                 <button
-                  style={{ ...S.btnPrimary(!listPrice), marginTop: 16 }}
+                  style={{ ...S.btnPrimary(!listPrice || parseFloat(listPrice) <= 0 || parseFloat(listPrice) > parseFloat(maxResale)), marginTop: 16 }}
                   onClick={() => {
                     onListResale(listingModal.tokenId, listPrice);
                     setListingModal(null);
                     setListPrice("");
                   }}
-                  disabled={!listPrice}
+                  disabled={!listPrice || parseFloat(listPrice) <= 0 || parseFloat(listPrice) > parseFloat(maxResale)}
                 >
                   List Ticket
                 </button>

@@ -123,6 +123,12 @@ export async function listForResale(tokenId, priceWei) {
   await ensureCorrectNetwork();
 
   const contract = await getSignerContract();
+
+  // Step 1: Approve the contract to transfer this token (ERC721 standard)
+  const approveTx = await contract.approve(CONTRACT_ADDRESS, tokenId);
+  await approveTx.wait();
+
+  // Step 2: List for resale
   const tx = await contract.listForResale(tokenId, priceWei);
   const receipt = await tx.wait();
 
