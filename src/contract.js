@@ -15,7 +15,6 @@ export const WIREFLUID_CHAIN = {
 };
 
 // ─── CONTRACT ADDRESS ───
-// TODO: Replace with deployed address on March 24th (hackathon start)
 export const CONTRACT_ADDRESS = "0x0a6F272f3f7caf8927988ECEEb03834E8C51B064";
 
 // ─── EXPLORER LINKS ───

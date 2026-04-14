@@ -343,9 +343,12 @@ export async function fetchAllMatches() {
 
   const result = matches.filter(Boolean);
 
-  // Cache the result
+  // Cache the result (BigInt fields serialized to strings for JSON compatibility)
   try {
-    sessionStorage.setItem(MATCHES_CACHE_KEY, JSON.stringify(result));
+    const serializable = JSON.parse(JSON.stringify(result, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    ));
+    sessionStorage.setItem(MATCHES_CACHE_KEY, JSON.stringify(serializable));
     sessionStorage.setItem(MATCHES_CACHE_TS_KEY, String(Date.now()));
   } catch {}
 

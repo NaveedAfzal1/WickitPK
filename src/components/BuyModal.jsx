@@ -27,7 +27,7 @@ export default function BuyModal({ match, onClose, wallet, onPurchase, onGiftPur
   }, [success, purchasedTokenId, wallet, match]);
 
   // Gift mode
-  const [giftMode, setGiftMode] = useState(true);
+  const [giftMode, setGiftMode] = useState(false);
   const [recipients, setRecipients] = useState([""]);
   const [giftProgress, setGiftProgress] = useState(null);
   const [giftDone, setGiftDone] = useState(false);
