@@ -17,6 +17,7 @@ import {
   clearMatchesCache,
 } from "./blockchain";
 import { COLORS, S, font } from "./styles";
+import { Boxes } from "./components/BackgroundBoxes";
 import { MATCHES, RESALE_LISTINGS, MOCK_MY_TICKETS, wait } from "./mockData";
 
 import Navbar from "./components/Navbar";
@@ -133,7 +134,24 @@ export default function App() {
         if (tierTickets.length === 0) throw new Error(`No ${tier} tickets available for this match`);
         tokenId = tierTickets[0].tokenId;
         showToast("Confirm transaction in MetaMask...");
-        const result = await buyTicketOnChain(tokenId);
+        let result;
+        let attempts = 0;
+        const MAX_RETRIES = 3;
+        while (attempts < MAX_RETRIES) {
+          try {
+            result = await buyTicketOnChain(tokenId);
+            break;
+          } catch (buyErr) {
+            attempts++;
+            if (attempts >= MAX_RETRIES) throw buyErr;
+            showToast("Ticket taken — retrying with next available...");
+            const freshAvailable = await fetchAvailableTickets(match.id);
+            const freshTier = freshAvailable.filter(t => t.tier === tier);
+            if (freshTier.length === 0) throw new Error(`No ${tier} tickets available for this match`);
+            tokenId = freshTier[0].tokenId;
+          }
+        }
+        clearMatchesCache();
         showToast(`Ticket purchased! TX: ${result.txHash.slice(0, 14)}...`);
       } else {
         tokenId = Math.floor(Math.random() * 900 + 100);
@@ -266,6 +284,7 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes cardIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes levitate { 0%, 100% { transform: translateY(0px) rotateX(0deg); } 50% { transform: translateY(-14px) rotateX(1.5deg); } }
@@ -275,6 +294,9 @@ export default function App() {
         @keyframes fadeInScale { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 30px rgba(255,215,0,0.15), 0 0 60px rgba(255,215,0,0.05); } 50% { box-shadow: 0 0 50px rgba(255,215,0,0.3), 0 0 100px rgba(255,215,0,0.1); } }
         @keyframes holographicShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-33.333%); } }
+        .ticker-track { animation: marquee 20s linear infinite; }
+        .section-title::before { content: ''; display: block; width: 40px; height: 3px; background: #f97316; margin-bottom: 12px; border-radius: 2px; }
         @keyframes badgeGlowBronze { 0%, 100% { box-shadow: 0 0 8px #cd7f3250, 0 0 20px #cd7f3220; } 50% { box-shadow: 0 0 24px #cd7f3299, 0 0 48px #cd7f3245; } }
         @keyframes badgeGlowSilver { 0%, 100% { box-shadow: 0 0 8px #c0c0c050, 0 0 20px #c0c0c020; } 50% { box-shadow: 0 0 24px #c0c0c099, 0 0 48px #c0c0c045; } }
         @keyframes badgeGlowGold   { 0%, 100% { box-shadow: 0 0 8px #FFD70050, 0 0 20px #FFD70020; } 50% { box-shadow: 0 0 24px #FFD70099, 0 0 48px #FFD70045; } }
@@ -298,8 +320,14 @@ export default function App() {
         button:hover { opacity: 0.9; }
       `}</style>
 
+      {/* Animated background boxes — rendered first so bgGlow layers above it */}
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", overflow: "hidden", zIndex: 0 }}>
+        <Boxes />
+        {/* Radial vignette — fades the box grid into the background */}
+        <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at center, transparent 30%, ${COLORS.bg} 75%)`, pointerEvents: "none" }} />
+      </div>
+      {/* Atmospheric color glow — same z-index but later in DOM so it renders above boxes */}
       <div style={S.bgGlow} />
-      <div style={S.gridOverlay} />
 
       <Navbar page={page} setPage={setPage} wallet={wallet} onConnect={handleConnect} />
 
@@ -307,7 +335,7 @@ export default function App() {
         <div style={S.page}>
           <HeroBanner deployed={deployed} />
           {/* Stats Bar */}
-          <div className="stats-bar" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 40, padding: "20px 0" }}>
+          <div className="stats-bar" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 40, padding: "20px 0", borderTop: `2px solid ${COLORS.gold}` }}>
             {[
               { value: String(matches.length || 6), label: "Matches", icon: "\uD83C\uDFCF" },
               { value: "6", label: "Venues", icon: "\uD83C\uDFDF\uFE0F" },
@@ -317,37 +345,27 @@ export default function App() {
               <div key={i} style={{ padding: "16px 20px", borderRadius: 12, background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, textAlign: "center" }}>
                 <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
                 <div style={{ fontFamily: font, fontSize: 24, fontWeight: 800, color: COLORS.white, letterSpacing: "-0.02em" }}>{s.value}</div>
-                <div style={{ fontFamily: font, fontSize: 11, fontWeight: 600, color: COLORS.gray, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 2 }}>{s.label}</div>
+                <div style={{ fontFamily: font, fontSize: 11, fontWeight: 600, color: COLORS.gray, letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 2 }}>{s.label}</div>
               </div>
             ))}
           </div>
-          <h2 style={{ ...S.sectionTitle, fontSize: 24 }}>Upcoming Matches</h2>
-          <p style={S.sectionSub}>Select a match to purchase verified digital tickets</p>
-          {matchesLoading ? (
-            <div style={{ textAlign: "center", padding: 60, color: COLORS.gray }}>
-              <div style={{ display: "inline-block", width: 32, height: 32, border: `3px solid ${COLORS.border}`, borderTopColor: COLORS.greenLight, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-              <p style={{ marginTop: 16, fontFamily: font, fontSize: 14 }}>Loading matches from chain...</p>
-            </div>
-          ) : (
-            <div className="match-grid" style={S.matchGrid}>
-              {matches.map(m => (
-                <MatchCard key={m.id} match={m} onBuy={(match) => setBuyModal(match)} />
-              ))}
-            </div>
-          )}
           {isAdmin && (
-            <div style={{ marginTop: 40, padding: 24, borderRadius: 16, background: `${COLORS.gold}08`, border: `1px solid ${COLORS.gold}30` }}>
-              <div style={{ fontFamily: font, fontSize: 11, fontWeight: 700, color: COLORS.gold, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>
-                Admin — Mark Match as Collectible
+            <div style={{ marginBottom: 32, padding: 24, borderRadius: 16, background: `${COLORS.bgCard}`, border: `1px solid ${COLORS.gold}40`, borderLeft: `3px solid ${COLORS.gold}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }}>🏟️</span>
+                <span style={{ fontFamily: font, fontSize: 14, fontWeight: 800, color: COLORS.gold, letterSpacing: "0.08em", textTransform: "uppercase" }}>Match Admin</span>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <p style={{ fontFamily: font, fontSize: 13, color: COLORS.gray, lineHeight: 1.6, marginBottom: 20, maxWidth: 640 }}>
+                After a match ends, mark it as Collectible — this converts all used tickets into permanent digital badge NFTs for fans who attended. Only the deployer wallet can do this.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {matches.map(m => (
-                  <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: COLORS.bgCard, border: `1px solid ${COLORS.border}` }}>
+                  <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
                     <span style={{ fontFamily: font, fontSize: 14, fontWeight: 600 }}>
                       Match {m.matchNum} — {m.home} vs {m.away}
                     </span>
                     {m.collectible ? (
-                      <span style={{ fontFamily: font, fontSize: 12, fontWeight: 700, color: COLORS.gold }}>★ Collectible</span>
+                      <span style={{ fontFamily: font, fontSize: 12, fontWeight: 700, color: COLORS.greenLight }}>★ Already Collectible</span>
                     ) : (
                       <button
                         onClick={() => handleMarkCollectible(m.id)}
@@ -359,6 +377,20 @@ export default function App() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+          <h2 className="section-title" style={{ ...S.sectionTitle, fontSize: 24 }}>Upcoming Matches</h2>
+          <p style={S.sectionSub}>Select a match to purchase verified digital tickets</p>
+          {matchesLoading ? (
+            <div style={{ textAlign: "center", padding: 60, color: COLORS.gray }}>
+              <div style={{ display: "inline-block", width: 32, height: 32, border: `3px solid ${COLORS.border}`, borderTopColor: COLORS.greenLight, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              <p style={{ marginTop: 16, fontFamily: font, fontSize: 14 }}>Loading matches from chain...</p>
+            </div>
+          ) : (
+            <div className="match-grid" style={S.matchGrid}>
+              {matches.map((m, i) => (
+                <MatchCard key={m.id} match={m} onBuy={(match) => setBuyModal(match)} index={i} />
+              ))}
             </div>
           )}
           <ResaleSection listings={resaleListings} matches={matches} wallet={wallet} onBuyResale={handleBuyResale} />

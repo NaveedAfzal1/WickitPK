@@ -74,8 +74,8 @@ export default function VerifyPage({ showToast }) {
     try {
       const data = JSON.parse(text);
       const { tokenId: scannedToken, wallet: scannedWallet, timestamp } = data;
-      if (timestamp && Date.now() - Number(timestamp) > 30000) {
-        setScanError("QR expired — please generate a new one at the ticket purchase screen.");
+      if (timestamp && Date.now() - Number(timestamp) > 300000) {
+        setScanError("QR expired — please generate a new one from My Tickets.");
         return;
       }
       if (scannedToken !== undefined && scannedWallet) {
@@ -233,7 +233,7 @@ export default function VerifyPage({ showToast }) {
             Why WireFluid?
           </div>
           <p style={{ fontSize: 13, color: COLORS.gray, lineHeight: 1.7, margin: 0 }}>
-            WickitPK is deployed on WireFluid — an EVM-compatible chain built on Cosmos SDK. Unlike pure EVM chains, WireFluid supports IBC (Inter-Blockchain Communication), meaning PSL tickets minted here are natively reachable by any IBC-connected Cosmos application without bridging. Phase 2 roadmap: IBC-based cross-chain fan loyalty verification across the Cosmos ecosystem.
+            Ticket verification at a stadium gate requires sub-5-second confirmation — you cannot tell 10,000 fans to wait for Ethereum finality. WireFluid delivers instant reorg-proof finality via CometBFT consensus. Gas per transaction is under 0.001 WIRE — affordable for every PSL fan. Phase 2: our contract will call WireFluid's <span style={{ color: COLORS.greenLight, fontFamily: "monospace" }}>ibcTransferPrecompile</span> directly from Solidity, making PSL collectibles natively queryable by 50+ IBC-connected Cosmos chains including Osmosis and Cosmos Hub. This is not just a ticketing platform for Pakistan — it is PSL fan identity infrastructure for the entire Cosmos ecosystem.
           </p>
         </div>
       </div>

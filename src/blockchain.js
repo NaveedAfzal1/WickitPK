@@ -260,6 +260,20 @@ function formatMatchTime(unixTimestamp) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
+// On-chain timestamps are incorrect — override display dates per matchId without
+// touching any contract data.
+function getMatchDisplayDate(matchId) {
+  const dates = {
+    1: { date: "May 15, 2026", time: "7:00 PM PKT" },
+    2: { date: "May 17, 2026", time: "7:00 PM PKT" },
+    3: { date: "May 19, 2026", time: "3:00 PM PKT" },
+    4: { date: "May 21, 2026", time: "7:00 PM PKT" },
+    5: { date: "May 23, 2026", time: "7:00 PM PKT" },
+    6: { date: "May 25, 2026", time: "7:00 PM PKT" },
+  };
+  return dates[matchId] || { date: "TBA", time: "TBA" };
+}
+
 // ─── FETCH ALL MATCHES ───
 const MATCHES_CACHE_KEY = "wickitpk_matches";
 const MATCHES_CACHE_TS_KEY = "wickitpk_matches_ts";
@@ -326,13 +340,14 @@ export async function fetchAllMatches() {
         }
       }
 
+      const displayDate = getMatchDisplayDate(id);
       return {
         id,
         home,
         away,
         matchNum: matchNum || id,
-        date: formatMatchDate(details.date),
-        time: formatMatchTime(details.date),
+        date: displayDate.date,
+        time: displayDate.time,
         venue: details.venue,
         resaleCap: Number(details.maxResalePercentage),
         collectible: details.collectible,

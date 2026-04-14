@@ -1,4 +1,5 @@
 import { useState } from "react";
+import QRCode from "qrcode";
 import { COLORS, TEAM_COLORS, S, Icons, font } from "../styles";
 import CollectibleModal from "./CollectibleModal";
 
@@ -13,6 +14,18 @@ export default function MyTicketsPage({ wallet, myTickets, matches, onListResale
   const [listingModal, setListingModal] = useState(null);
   const [collectibleView, setCollectibleView] = useState(null);
   const [listPrice, setListPrice] = useState("");
+  const [qrModal, setQrModal] = useState(null);
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+
+  const showQr = async (ticket) => {
+    setQrModal(ticket);
+    setQrDataUrl(null);
+    const payload = JSON.stringify({ tokenId: ticket.tokenId, wallet, matchId: ticket.matchId, timestamp: Date.now() });
+    try {
+      const url = await QRCode.toDataURL(payload, { width: 200, margin: 1, color: { dark: "#0a0f1a", light: "#ffffff" } });
+      setQrDataUrl(url);
+    } catch {}
+  };
 
   if (!wallet) {
     return (
@@ -94,9 +107,12 @@ export default function MyTicketsPage({ wallet, myTickets, matches, onListResale
                 {t.status === "listed" && t.listPrice && (
                   <div style={{ fontSize: 13, color: COLORS.gold, marginTop: 4 }}>Listed at {listDisplay} WIRE</div>
                 )}
-                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
                   {t.status === "active" && (
-                    <button style={S.btnGold} onClick={() => setListingModal(t)}>List for Resale</button>
+                    <>
+                      <button style={S.btnGold} onClick={() => setListingModal(t)}>List for Resale</button>
+                      <button style={{ fontFamily: font, padding: "10px 20px", borderRadius: 10, border: `1px solid ${COLORS.greenLight}40`, background: `${COLORS.greenLight}10`, color: COLORS.greenLight, fontSize: 13, fontWeight: 700, cursor: "pointer" }} onClick={() => showQr(t)}>Show QR</button>
+                    </>
                   )}
                   {t.status === "listed" && (
                     <button style={S.btnDanger} onClick={() => onCancelListing(t.tokenId)}>Cancel Listing</button>
@@ -168,6 +184,31 @@ export default function MyTicketsPage({ wallet, myTickets, matches, onListResale
           </div>
         );
       })()}
+
+      {qrModal && (
+        <div style={S.modal} onClick={() => setQrModal(null)}>
+          <div style={{ ...S.modalContent, maxWidth: 320, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+            <div style={{ ...S.modalHeader, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontFamily: font, fontSize: 16, fontWeight: 800 }}>Entry QR Code</span>
+              <button onClick={() => setQrModal(null)} style={{ background: "none", border: "none", color: COLORS.gray, cursor: "pointer", padding: 4 }}>{Icons.close}</button>
+            </div>
+            <div style={S.modalBody}>
+              <div style={{ padding: 12, background: COLORS.white, borderRadius: 12, display: "inline-block", border: `2px solid ${COLORS.greenLight}40` }}>
+                {qrDataUrl
+                  ? <img src={qrDataUrl} alt="Entry QR Code" width={200} height={200} style={{ display: "block", borderRadius: 4 }} />
+                  : <div style={{ width: 200, height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 12 }}>Generating...</div>
+                }
+              </div>
+              <p style={{ fontFamily: font, fontSize: 13, fontWeight: 600, color: COLORS.greenLight, marginTop: 16, lineHeight: 1.5 }}>
+                Valid for 5 minutes — show this at the stadium gate
+              </p>
+              <p style={{ fontFamily: "monospace", fontSize: 11, color: COLORS.grayDark, marginTop: 6 }}>
+                Token #{qrModal.tokenId} &middot; {qrModal.tier}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {collectibleView && (
         <CollectibleModal

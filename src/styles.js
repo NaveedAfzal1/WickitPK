@@ -3,15 +3,15 @@
 // ═══════════════════════════════════════════════════════════════
 
 export const COLORS = {
-  bg: "#0a0f1a",
-  bgCard: "#111827",
+  bg: "#07090d",
+  bgCard: "#0c1018",
   bgCardHover: "#1a2332",
-  border: "#1e2a3a",
+  border: "#1c2738",
   green: "#1a472a",
   greenLight: "#22c55e",
   greenGlow: "#22c55e33",
-  gold: "#FFD700",
-  goldDim: "#b8960f",
+  gold: "#f97316",
+  goldDim: "#c2570d",
   navy: "#0f172a",
   white: "#f8fafc",
   gray: "#94a3b8",
@@ -23,12 +23,12 @@ export const COLORS = {
 export const TEAM_COLORS = {
   "Lahore Qalandars": { primary: "#22c55e", secondary: "#dc2626" },
   "Islamabad United": { primary: "#dc2626", secondary: "#fbbf24" },
-  "Karachi Kings": { primary: "#3b82f6", secondary: "#fbbf24" },
-  "Multan Sultans": { primary: "#fbbf24", secondary: "#2563eb" },
-  "Peshawar Zalmi": { primary: "#fbbf24", secondary: "#1e3a5f" },
+  "Karachi Kings": { primary: "#1d4ed8", secondary: "#fbbf24" },
+  "Multan Sultans": { primary: "#fbbf24", secondary: "#1d4ed8" },
+  "Peshawar Zalmi": { primary: "#f59e0b", secondary: "#1c1c1c" },
   "Quetta Gladiators": { primary: "#7c3aed", secondary: "#fbbf24" },
-  "Rawalpindi Pindiz": { primary: "#1e40af", secondary: "#FFD700" },
-  "Hyderabad Kingsmen": { primary: "#7c3aed", secondary: "#f59e0b" },
+  "Rawalpindi Pindiz": { primary: "#f97316", secondary: "#22c55e" },
+  "Hyderabad Kingsmen": { primary: "#1c1c1c", secondary: "#8b5cf6" },
 };
 
 export const font = "'Sora', sans-serif";
@@ -36,7 +36,7 @@ export const fontBody = "'Plus Jakarta Sans', sans-serif";
 
 export const S = {
   app: { fontFamily: fontBody, background: COLORS.bg, color: COLORS.white, minHeight: "100vh", position: "relative", overflow: "hidden" },
-  bgGlow: { position: "fixed", top: "-50%", left: "-50%", width: "200%", height: "200%", background: `radial-gradient(ellipse at 30% 20%, ${COLORS.green}08 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, ${COLORS.gold}05 0%, transparent 50%)`, pointerEvents: "none", zIndex: 0 },
+  bgGlow: { position: "fixed", top: "-50%", left: "-50%", width: "200%", height: "200%", background: `radial-gradient(ellipse at 20% 10%, #f9731608 0%, transparent 40%), radial-gradient(ellipse at 80% 10%, ${COLORS.greenLight}07 0%, transparent 40%), radial-gradient(ellipse at 50% 100%, ${COLORS.navy}80 0%, transparent 50%)`, pointerEvents: "none", zIndex: 0 },
   gridOverlay: { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundImage: `linear-gradient(${COLORS.border}15 1px, transparent 1px), linear-gradient(90deg, ${COLORS.border}15 1px, transparent 1px)`, backgroundSize: "60px 60px", pointerEvents: "none", zIndex: 0 },
 
   // Navbar
@@ -50,7 +50,7 @@ export const S = {
 
   // Page
   page: { position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "32px 24px 80px" },
-  sectionTitle: { fontFamily: font, fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 },
+  sectionTitle: { fontFamily: font, fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8, textTransform: "uppercase" },
   sectionSub: { color: COLORS.gray, fontSize: 15, marginBottom: 32, lineHeight: 1.6 },
 
   // Match cards

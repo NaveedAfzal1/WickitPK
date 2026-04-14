@@ -1,14 +1,25 @@
 import { useState } from "react";
 import { COLORS, TEAM_COLORS, S, Icons, font } from "../styles";
 
-export default function MatchCard({ match, onBuy }) {
+export default function MatchCard({ match, onBuy, index = 0 }) {
   const [hovered, setHovered] = useState(false);
   const homeColor = TEAM_COLORS[match.home]?.primary || COLORS.greenLight;
   const isHot = Object.values(match.tickets).some(t => t.sold / t.total > 0.8);
 
+  const cardStyle = {
+    ...S.matchCard,
+    borderLeft: `3px solid ${hovered ? homeColor : homeColor + "99"}`,
+    transform: hovered ? "translateY(-4px)" : "translateY(0)",
+    boxShadow: hovered ? `0 8px 32px ${homeColor}20` : "none",
+    borderColor: hovered ? `${homeColor}40` : COLORS.border,
+    transition: "transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease",
+    // CSS animation for entrance — no GSAP, no StrictMode issues
+    animation: `cardIn 0.45s ease-out ${index * 0.09}s both`,
+  };
+
   return (
     <div
-      style={{ ...S.matchCard, ...(hovered ? S.matchCardHover : {}) }}
+      style={cardStyle}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => onBuy(match)}
@@ -20,7 +31,7 @@ export default function MatchCard({ match, onBuy }) {
       )}
       <div style={S.matchHeader(homeColor)}>
         <div style={S.matchNum}>MATCH {match.matchNum} &middot; PSL 2026</div>
-        <div style={S.matchTeams}>
+        <div style={{ ...S.matchTeams, fontSize: 22, fontWeight: 800 }}>
           <span style={{ color: homeColor }}>{match.home}</span>
           <span style={S.matchVs}>vs</span>
           <span>{match.away}</span>
@@ -43,6 +54,11 @@ export default function MatchCard({ match, onBuy }) {
             </div>
           );
         })}
+      </div>
+      <div style={{ padding: "12px 24px 16px", borderTop: `1px solid ${COLORS.border}` }}>
+        <div style={{ fontFamily: font, fontSize: 12, fontWeight: 700, color: homeColor, letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "right" }}>
+          BUY TICKETS →
+        </div>
       </div>
     </div>
   );

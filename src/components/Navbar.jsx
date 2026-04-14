@@ -1,13 +1,40 @@
+import { useEffect, useRef, useState } from "react";
 import { COLORS, S, Icons, font } from "../styles";
+import { gsap } from "gsap";
 
 export default function Navbar({ page, setPage, wallet, onConnect }) {
+  const navRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.from(navRef.current, { y: -80, opacity: 0, duration: 0.6, ease: "power3.out" });
+    });
+
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      ctx.revert();
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  const navStyle = {
+    ...S.nav,
+    background: scrolled ? `${COLORS.bg}e6` : "transparent",
+    backdropFilter: scrolled ? "blur(20px)" : "none",
+    borderBottom: scrolled ? `1px solid ${COLORS.border}` : "1px solid transparent",
+    transition: "background 0.3s ease, backdrop-filter 0.3s ease, border-color 0.3s ease",
+  };
+
   return (
-    <nav style={S.nav}>
+    <nav ref={navRef} style={navStyle}>
       <div style={S.navInner}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={S.logo} onClick={() => setPage("browse")}>
             <div style={S.logoIcon}>&#x26A1;</div>
-            <span>Wickit<span style={{ color: COLORS.greenLight }}>PK</span></span>
+            <span>Wickit<span style={{ color: COLORS.gold }}>PK</span></span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 20, background: `${COLORS.border}60`, border: `1px solid ${COLORS.border}` }}>
             <div style={{ width: 14, height: 14, borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #06b6d4)" }} />

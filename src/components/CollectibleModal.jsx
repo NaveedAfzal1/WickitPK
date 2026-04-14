@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { COLORS, TEAM_COLORS, S, Icons, font } from "../styles";
+import { explorerTokenUrl } from "../contract";
 
 export default function CollectibleModal({ ticket, match, wallet, onClose }) {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -108,7 +109,7 @@ export default function CollectibleModal({ ticket, match, wallet, onClose }) {
               <div><div style={{ fontFamily: "monospace", fontSize: 12, color: COLORS.gray }}>Token #{ticket.tokenId}</div></div>
               <div style={{ textAlign: "right" }}><div style={{ fontFamily: "monospace", fontSize: 12, color: COLORS.gray }}>{wallet?.slice(0, 8)}...{wallet?.slice(-6)}</div></div>
             </div>
-            <a href="#" onClick={e => e.preventDefault()} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: font, fontSize: 12, fontWeight: 600, color: COLORS.greenLight, textDecoration: "none", padding: "8px 0", opacity: 0.8 }}>
+            <a href={explorerTokenUrl(ticket.tokenId)} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: font, fontSize: 12, fontWeight: 600, color: COLORS.greenLight, textDecoration: "none", padding: "8px 0", opacity: 0.8 }}>
               View on WireScan Explorer {Icons.link}
             </a>
           </div>
